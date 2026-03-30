@@ -621,8 +621,8 @@ async function loadAll(retry=0){
 }
 
 // ── FORMAT ──────────────────────────────────────────────────────────────
-function fmt(n){return isNaN(n)||n===null?'-':n.toLocaleString('ko-KR')+'G';}
-function fmtR(r){return !isFinite(r)?'-':(r>=0?'+':'')+r.toFixed(1)+'%';}
+function fmt(n){if(n===null||n===undefined||isNaN(n)) return '-'; return Number(n).toLocaleString('ko-KR')+'G';}
+function fmtR(r){if(r===null||r===undefined||!isFinite(r)) return '-'; return (r>=0?'+':'')+Number(r).toFixed(1)+'%';}
 function pc(n){return n>=0?'var(--green)':'var(--red)';}
 function cls(n){return n>=0?'pos':'neg';}
 
