@@ -598,11 +598,16 @@ async function loadAll(retry=0){
       sb.from('prices').select('*').order('updated_at',{ascending:false}),
       sb.from('price_history').select('*').order('recorded_at',{ascending:false}).limit(200),
     ]);
-    if(tr.error||sr.error) throw new Error('데이터 로드 오류');
+    // 각 테이블 오류 개별 확인 (오류가 있어도 나머지는 로드)
+    if(tr.error) console.error('trades 오류:', tr.error.message);
+    if(sr.error) console.error('stats 오류:', sr.error.message);
+    if(pr.error) console.error('prices 오류:', pr.error.message);
+    if(phr.error) console.error('price_history 오류:', phr.error.message);
     trades=tr.data||[];
     statsData=sr.data||[];
     prices=pr.data||[];
     priceHistory=phr.data||[];
+    console.log('로드 완료 - trades:', trades.length, 'prices:', prices.length);
     refreshDatalist();
     updateFilters();
   } catch(e) {
