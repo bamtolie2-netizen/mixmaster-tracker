@@ -619,11 +619,12 @@ async function authSubmit() {
 // ── LOAD ────────────────────────────────────────────────────────────────
 async function loadAll(retry=0){
   try {
-    const [tr,sr,pr,phr]=await Promise.all([
+    const [tr,sr,pr,phr,rr]=await Promise.all([
       sb.from('trades').select('*').order('created_at',{ascending:false}),
       sb.from('stats').select('*').order('completed_at',{ascending:false}),
       sb.from('prices').select('*').order('updated_at',{ascending:false}),
       sb.from('price_history').select('*').order('recorded_at',{ascending:false}).limit(200),
+      sb.from('core_recipes').select('*').order('base_level',{ascending:true}),
     ]);
     if(tr.error) console.error('trades 오류:', tr.error.message);
     if(sr.error) console.error('stats 오류:', sr.error.message);
