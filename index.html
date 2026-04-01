@@ -1560,91 +1560,98 @@ function buildPlanner() {
 
   const sample = targetRecipes[0];
   const color  = TYPE_COLORS[sample.core_type]||'var(--accent)';
+  const visited = new Set();
 
-  // ── 재귀 트리 카드 생성 ──────────────────────────────────────
-  const visited = new Set(); // 무한루프 방지
-
-  function makeTreeCard(name, enchant=0, isMain=true, depth=0) {
+  // 하나의 몬스터에 대한 레시피 블록 생성
+  function makeBlock(name, depth=0, isMain=null) {
     const rList = recipes.filter(r=>r.result_name===name);
     const rec   = rList[0];
-    const nodeColor = isMain?'var(--accent)':'var(--gold)';
+    const baseLv = rec?.base_level||'';
+    const maxLv  = rec?.max_level||'';
     const isBase = !rList.length;
-    const baseLv = rec?.base_level||'?';
-    const maxLv  = rec?.max_level||'?';
-    const enchStr = enchant>0?`<span style="color:var(--gold);font-size:11px;margin-left:4px">+${enchant}강</span>`:'';
-    const alreadyVisited = visited.has(name);
-    if(!alreadyVisited) visited.add(name);
+    const alreadySeen = visited.has(name);
 
-    // 헤더 색상: 목표=accent, main=파랑, sub=골드
-    const borderColor = depth===0?color:nodeColor;
+    // 색상: 최상위=종족색, main=파랑, sub=주황
+    let labelColor = 'var(--text)';
+    if(depth===0) labelColor = color;
+    else if(isMain===true)  labelColor = 'var(--accent)';
+    else if(isMain===false) labelColor = 'var(--gold)';
 
-    return `
-    <div style="border:1px solid ${borderColor}55;border-radius:11px;overflow:hidden;margin-bottom:${depth===0?'0':'10px'}">
-      <!-- 카드 헤더 -->
-      <div style="background:${borderColor}18;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${borderColor}33">
-        <div style="display:flex;align-items:center;gap:8px">
-          ${depth>0?`<span style="font-size:10px;background:${nodeColor}22;color:${nodeColor};border-radius:8px;padding:1px 8px">${isMain?'Main':'Sub'}</span>`:''}
-          <span style="font-family:'Black Han Sans',sans-serif;font-size:${depth===0?'17':'14'}px;color:${borderColor}">${name}</span>
-          ${enchStr}
-        </div>
-        <div style="font-size:11px;color:var(--muted);text-align:right">
-          ${isBase?'<span style="color:var(--muted)">기초재료</span>':`기본<b style="color:var(--text);margin:0 2px">${baseLv}</b>만렙<b style="color:var(--gold);margin-left:2px">${maxLv}</b>`}
-        </div>
+    let html = '';
+
+    // 헤더 라인
+    const roleTag = depth===0?'':`<span style="font-size:10px;padding:1px 7px;border-radius:10px;margin-right:6px;background:${isMain?'rgba(79,138,255,.12)':'rgba(245,158,11,.12)'};color:${isMain?'var(--accent)':'var(--gold)'}">${isMain?'Main':'Sub'}</span>`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isBase||alreadySeen?'0':'10px'}">
+      <div style="display:flex;align-items:center;gap:4px">
+        ${roleTag}
+        <span style="font-size:${depth===0?'16':'14'}px;font-weight:500;color:${labelColor}">${name}</span>
+        ${isBase?'<span style="font-size:10px;color:var(--muted);margin-left:6px">기초재료</span>':''}
       </div>
-
-      ${!isBase && !alreadyVisited ? `
-      <!-- 레시피 목록 -->
-      <div style="padding:12px 14px;background:var(--surface)">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:1px">믹스 방법 (${rList.length}가지)</div>
-        ${rList.map((r,i)=>`
-          <div style="margin-bottom:${i<rList.length-1?'16':'0'}px">
-            <!-- 조합식 한줄 -->
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-              <span style="font-size:10px;color:var(--muted);min-width:16px">${i+1}.</span>
-              <span style="background:rgba(79,138,255,.12);border:1px solid rgba(79,138,255,.3);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:700">
-                ${r.main_core}${r.main_enchant>0?` <span style="color:var(--gold);font-size:10px">+${r.main_enchant}강</span>`:''}
-              </span>
-              <span style="color:var(--muted)">+</span>
-              <span style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--gold);font-weight:700">
-                ${r.sub_core}${r.sub_enchant>0?` <span style="color:var(--gold);font-size:10px">+${r.sub_enchant}강</span>`:''}
-              </span>
-              <span style="color:var(--muted)">→</span>
-              <span style="color:${borderColor};font-weight:700;font-size:12px">${name}</span>
-            </div>
-            <!-- 재귀: Main과 Sub의 하위 레시피 -->
-            ${depth<3?`
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-left:22px">
-              ${makeTreeCard(r.main_core, r.main_enchant, true,  depth+1)}
-              ${makeTreeCard(r.sub_core,  r.sub_enchant,  false, depth+1)}
-            </div>`:''}
-          </div>
-        `).join('')}
-      </div>` : isBase?'':`
-      <div style="padding:10px 14px;background:var(--surface);font-size:12px;color:var(--muted)">
-        ↩ 위에서 이미 표시됨
-      </div>`}
+      ${!isBase&&baseLv?`<span style="font-size:11px;color:var(--muted)">기본 ${baseLv} · 만렙 <b style="color:var(--gold)">${maxLv}</b></span>`:''}
     </div>`;
+
+    if(alreadySeen && !isBase){
+      html += `<div style="font-size:12px;color:var(--muted);padding:4px 0 8px">↩ 위에서 이미 표시됨</div>`;
+      return html;
+    }
+    if(!isBase) visited.add(name);
+    if(isBase) return html;
+
+    // 레시피 목록
+    html += `<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:${depth<3?'12':'4'}px">`;
+    rList.forEach((r,i)=>{
+      const me = r.main_enchant>0?`<span style="font-size:10px;background:rgba(245,158,11,.15);color:var(--gold);border-radius:6px;padding:1px 5px;margin-left:3px">+${r.main_enchant}강</span>`:'';
+      const se = r.sub_enchant >0?`<span style="font-size:10px;background:rgba(245,158,11,.15);color:var(--gold);border-radius:6px;padding:1px 5px;margin-left:3px">+${r.sub_enchant}강</span>`:'';
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--surface);border:0.5px solid var(--border);border-radius:7px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--muted);min-width:14px">${i+1}.</span>
+        <span style="font-size:13px;font-weight:500;color:var(--accent)">${r.main_core}${me}</span>
+        <span style="color:var(--muted);font-size:12px">+</span>
+        <span style="font-size:13px;font-weight:500;color:var(--gold)">${r.sub_core}${se}</span>
+        <span style="color:var(--muted);font-size:12px">→</span>
+        <span style="font-size:13px;font-weight:500;color:${labelColor}">${name}</span>
+      </div>`;
+    });
+    html += '</div>';
+
+    // 재귀: 첫 번째 레시피의 재료만 펼침 (depth 3까지)
+    if(depth < 3){
+      const r = rList[0];
+      const mainHasRecipe = recipes.some(x=>x.result_name===r.main_core);
+      const subHasRecipe  = recipes.some(x=>x.result_name===r.sub_core);
+      if(mainHasRecipe || subHasRecipe){
+        html += `<div style="display:flex;gap:12px">`;
+        // Main 재귀
+        html += `<div style="flex:1;padding:10px 12px;border-left:2px solid rgba(79,138,255,.3);background:rgba(79,138,255,.03);border-radius:0 7px 7px 0;margin-bottom:8px">`;
+        html += makeBlock(r.main_core, depth+1, true);
+        html += '</div>';
+        // Sub 재귀
+        html += `<div style="flex:1;padding:10px 12px;border-left:2px solid rgba(245,158,11,.3);background:rgba(245,158,11,.03);border-radius:0 7px 7px 0;margin-bottom:8px">`;
+        html += makeBlock(r.sub_core, depth+1, false);
+        html += '</div>';
+        html += '</div>';
+      }
+    }
+
+    return html;
   }
 
   const resultEl = document.getElementById('planner-result');
   resultEl.innerHTML = `
-    <!-- 목표 헤더 -->
     <div style="background:var(--surface);border:1px solid ${color};border-radius:12px;padding:16px 18px;margin-bottom:14px;border-top:3px solid ${color}">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <span style="font-family:'Black Han Sans',sans-serif;font-size:22px;color:${color}">${target}</span>
-          <span style="background:${color}22;color:${color};border-radius:12px;padding:2px 10px;font-size:11px;margin-left:8px">${sample.core_type}</span>
+          <span style="font-family:'Black Han Sans',sans-serif;font-size:20px;color:${color}">${target}</span>
+          <span style="font-size:11px;background:${color}22;color:${color};border-radius:12px;padding:2px 10px;margin-left:8px">${sample.core_type}</span>
         </div>
-        <div style="font-size:13px;text-align:right">
-          <span style="color:var(--muted)">기본 <b style="color:var(--text)">${sample.base_level}</b> &nbsp;|&nbsp; 만렙 <b style="color:var(--gold)">${sample.max_level}</b></span>
-          ${targetLv?`<div style="color:var(--green);font-weight:700;margin-top:3px">🎯 목표 레벨 ${targetLv}</div>`:''}
+        <div style="font-size:13px;text-align:right;color:var(--muted)">
+          기본 <b style="color:var(--text)">${sample.base_level}</b> &nbsp;·&nbsp; 만렙 <b style="color:var(--gold)">${sample.max_level}</b>
+          ${targetLv?`<div style="color:var(--green);font-weight:700;font-size:12px;margin-top:2px">목표 ${targetLv}</div>`:''}
         </div>
       </div>
     </div>
-
-    <!-- 재귀 트리 -->
-    ${makeTreeCard(target, 0, true, 0)}
-  `;
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+      ${makeBlock(target, 0, null)}
+    </div>`;
 }
 
 // ── PWA ───────────────────────────────────────────────────────────────────
