@@ -303,6 +303,7 @@ tbody td.r{text-align:right;font-variant-numeric:tabular-nums;}
     <button class="tab" onclick="sw('price')">💰 시세</button>
     <button class="tab" onclick="sw('calc')">🧬 믹스 계산기</button>
     <button class="tab" onclick="sw('recipe')">📖 코어 족보</button>
+    <button class="tab" onclick="sw('planner')">🗺️ 나만의 족보</button>
   </div>
 
   <main>
@@ -507,6 +508,8 @@ tbody td.r{text-align:right;font-variant-numeric:tabular-nums;}
       <div style="max-width:800px;margin:0 auto">
 
         <!-- 검색창 -->
+        <div id="admin-recipe-form"></div>
+
         <div style="margin-bottom:20px">
           <div style="font-family:'Black Han Sans',sans-serif;font-size:20px;color:var(--accent);margin-bottom:6px;text-align:center">📖 코어 족보</div>
           <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:18px">몬스터 이름을 검색하면 믹스 방법을 알려드립니다</div>
@@ -525,6 +528,37 @@ tbody td.r{text-align:right;font-variant-numeric:tabular-nums;}
 
         <!-- 결과 영역 -->
         <div id="recipe-result"></div>
+      </div>
+    </div>
+
+    <!-- 나만의 족보 -->
+    <div class="panel" id="tab-planner">
+      <div style="max-width:900px;margin:0 auto">
+        <div style="font-family:'Black Han Sans',sans-serif;font-size:20px;color:var(--accent);margin-bottom:6px;text-align:center">🗺️ 나만의 족보 설계</div>
+        <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:18px">목표 몬스터를 선택하면 필요한 재료와 레벨을 설계해드립니다</div>
+
+        <!-- 목표 몬스터 입력 -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px">
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
+            <div class="fg">
+              <label>🎯 목표 몬스터</label>
+              <input type="text" id="planner-target" placeholder="만들고 싶은 몬스터 이름" list="planner-dl"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;width:100%">
+              <datalist id="planner-dl"></datalist>
+            </div>
+            <div class="fg">
+              <label>목표 레벨</label>
+              <input type="number" id="planner-target-lv" placeholder="목표 레벨" min="1"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;width:120px;text-align:center">
+            </div>
+            <button onclick="buildPlanner()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap">
+              🗺️ 족보 설계
+            </button>
+          </div>
+        </div>
+
+        <!-- 설계 결과 -->
+        <div id="planner-result"></div>
       </div>
     </div>
 
@@ -656,11 +690,11 @@ function pc(n){return n>=0?'var(--green)':'var(--red)';}
 function cls(n){return n>=0?'pos':'neg';}
 
 // ── TABS ────────────────────────────────────────────────────────────────
-const TABS=['overview','trade','stats','daily','monthly','price','calc','recipe'];
+const TABS=['overview','trade','stats','daily','monthly','price','calc','recipe','planner'];
 function sw(tab){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',TABS[i]===tab));
   document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',TABS[i]===tab));
-  ({overview:renderOverview,trade:renderTradeTab,stats:renderStatsTab,daily:renderDaily,monthly:renderMonthly,price:renderPriceTab,calc:renderCalcTab,recipe:renderRecipeTab})[tab]();
+  ({overview:renderOverview,trade:renderTradeTab,stats:renderStatsTab,daily:renderDaily,monthly:renderMonthly,price:renderPriceTab,calc:renderCalcTab,recipe:renderRecipeTab,planner:renderPlannerTab})[tab]();
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────────────
@@ -1323,6 +1357,36 @@ async function renderRecipeTab() {
     recipes = data || [];
   }
 
+  // 관리자 족보 추가 폼
+  const adminRecipeEl = document.getElementById('admin-recipe-form');
+  if(isAdmin()){
+    adminRecipeEl.innerHTML = `
+    <div class="admin-bar" style="margin-bottom:18px">
+      <div class="admin-bar-title">🔧 관리자 족보 추가</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="fg">
+          <label>종족</label>
+          <select id="ar-type" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;width:100%">
+            <option>드래곤</option><option>악마</option><option>짐승</option><option>새</option>
+            <option>곤충</option><option>식물</option><option>미스터리</option><option>메탈</option><option>이벤트</option>
+          </select>
+        </div>
+        <div class="fg"><label>Main 코어</label><input type="text" id="ar-main" placeholder="메인 코어명"></div>
+        <div class="fg"><label>Main 인챈트</label><input type="number" id="ar-main-ench" value="0" min="0" max="9"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="fg"><label>Sub 코어</label><input type="text" id="ar-sub" placeholder="서브 코어명"></div>
+        <div class="fg"><label>Sub 인챈트</label><input type="number" id="ar-sub-ench" value="0" min="0" max="9"></div>
+        <div class="fg"><label>결과 코어</label><input type="text" id="ar-result" placeholder="결과 코어명"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+        <div class="fg"><label>결과 기본레벨</label><input type="number" id="ar-lv" placeholder="예: 50" min="1"></div>
+        <div style="padding-top:18px;font-size:12px;color:var(--muted)">만렙 = 기본레벨 + 25</div>
+        <button class="btn-price-add" onclick="addAdminRecipe()">추가</button>
+      </div>
+    </div>`;
+  } else { adminRecipeEl.innerHTML = ''; }
+
   // 타입 버튼 렌더
   const btnWrap = document.getElementById('recipe-type-btns');
   btnWrap.innerHTML = CORE_TYPES.map(t => `
@@ -1441,6 +1505,171 @@ function searchRecipe(val) {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── 관리자 족보 추가 ───────────────────────────────────────────────────────
+async function addAdminRecipe() {
+  if(!isAdmin()) return;
+  const core_type   = document.getElementById('ar-type').value;
+  const main_core   = document.getElementById('ar-main').value.trim();
+  const main_enchant= parseInt(document.getElementById('ar-main-ench').value)||0;
+  const sub_core    = document.getElementById('ar-sub').value.trim();
+  const sub_enchant = parseInt(document.getElementById('ar-sub-ench').value)||0;
+  const result_name = document.getElementById('ar-result').value.trim();
+  const base_level  = parseInt(document.getElementById('ar-lv').value)||0;
+  const max_level   = base_level + 25;
+
+  if(!main_core||!sub_core||!result_name||!base_level) {
+    alert('모든 항목을 입력해주세요.');return;
+  }
+
+  const {data,error} = await sb.from('core_recipes').insert({
+    core_type, main_core, main_enchant, sub_core, sub_enchant,
+    result_name, base_level, max_level
+  }).select().single();
+
+  if(error){alert('추가 오류: '+error.message);return;}
+  recipes.push(data);
+  // 입력 초기화
+  ['ar-main','ar-sub','ar-result','ar-lv'].forEach(id=>document.getElementById(id).value='');
+  ['ar-main-ench','ar-sub-ench'].forEach(id=>document.getElementById(id).value='0');
+  alert(`✅ "${result_name}" 레시피가 추가됐습니다!`);
+  renderRecipeTab();
+}
+
+// ── 나만의 족보 설계 ───────────────────────────────────────────────────────
+function renderPlannerTab() {
+  // 자동완성
+  const names = [...new Set(recipes.map(r=>r.result_name))].sort();
+  document.getElementById('planner-dl').innerHTML = names.map(n=>`<option value="${n}">`).join('');
+  document.getElementById('planner-result').innerHTML = `
+    <div class="empty"><div class="empty-icon">🗺️</div>
+    <div class="empty-text">목표 몬스터를 입력하고 족보 설계 버튼을 눌러주세요</div></div>`;
+}
+
+function buildPlanner() {
+  const target = document.getElementById('planner-target').value.trim();
+  const targetLv = parseInt(document.getElementById('planner-target-lv').value)||0;
+  if(!target){alert('목표 몬스터를 입력해주세요.');return;}
+
+  // 목표 몬스터의 모든 레시피
+  const targetRecipes = recipes.filter(r=>r.result_name===target);
+  if(!targetRecipes.length){
+    document.getElementById('planner-result').innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">"${target}"의 족보 데이터가 없습니다.</div></div>`;
+    return;
+  }
+
+  const sample = targetRecipes[0];
+  const color = TYPE_COLORS[sample.core_type]||'var(--accent)';
+
+  // 전체 재료 트리 재귀 수집
+  const collected = {}; // name → {recipes, depth}
+  function collect(name, depth=0) {
+    if(collected[name]) { collected[name].depth = Math.max(collected[name].depth,depth); return; }
+    const rList = recipes.filter(r=>r.result_name===name);
+    collected[name] = {recipes: rList, depth};
+    rList.forEach(r=>{
+      if(r.main_core) collect(r.main_core, depth+1);
+      if(r.sub_core)  collect(r.sub_core,  depth+1);
+    });
+  }
+  collect(target);
+
+  // 깊이순 정렬 (재료 → 목표)
+  const sorted = Object.entries(collected).sort((a,b)=>b[1].depth-a[1].depth);
+
+  // 레벨 계산 (믹스 공식: (main_lv+sub_lv)/2 + 8 + max보너스)
+  const lvMap = {}; // name → 최적 레벨
+
+  // 기초 재료(레시피 없는것)는 직접 입력하거나 기본레벨 사용
+  sorted.forEach(([name,info])=>{
+    if(!info.recipes.length) return; // 기초재료
+    // 레시피 중 첫번째로 레벨 계산
+    const r = info.recipes[0];
+    const mainLv = lvMap[r.main_core] || (recipes.find(x=>x.result_name===r.main_core)?.max_level || r.base_level);
+    const subLv  = lvMap[r.sub_core]  || (recipes.find(x=>x.result_name===r.sub_core)?.max_level  || r.base_level);
+    const calc   = Math.floor((mainLv+subLv)/2)+8;
+    lvMap[name]  = calc;
+  });
+
+  // 목표 레벨 표시
+  const finalLv = targetLv || sample.max_level;
+
+  // 결과 렌더
+  let html = `
+    <!-- 목표 몬스터 헤더 -->
+    <div style="background:var(--surface);border:1px solid ${color};border-radius:12px;padding:18px;margin-bottom:16px;border-top:3px solid ${color}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-family:'Black Han Sans',sans-serif;font-size:22px;color:${color}">${target}</span>
+          <span style="background:${color}22;color:${color};border-radius:12px;padding:2px 10px;font-size:11px;margin-left:8px">${sample.core_type}</span>
+        </div>
+        <div style="text-align:right;font-size:13px">
+          <div style="color:var(--muted)">기본레벨 <b style="color:var(--text)">${sample.base_level}</b> &nbsp;|&nbsp; 만렙 <b style="color:var(--gold)">${sample.max_level}</b></div>
+          ${targetLv?`<div style="color:var(--green);font-weight:700;margin-top:2px">🎯 목표 레벨: ${targetLv}</div>`:''}
+        </div>
+      </div>
+    </div>
+
+    <!-- 믹스 방법 선택 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">🔀 ${target} 믹스 방법 (${targetRecipes.length}가지)</div>
+      ${targetRecipes.map((r,i)=>{
+        const mainEnch = r.main_enchant>0?` <span style="color:var(--gold);font-size:11px">+${r.main_enchant}강</span>`:'';
+        const subEnch  = r.sub_enchant >0?` <span style="color:var(--gold);font-size:11px">+${r.sub_enchant}강</span>`:'';
+        const mainRec  = recipes.find(x=>x.result_name===r.main_core);
+        const subRec   = recipes.find(x=>x.result_name===r.sub_core);
+        return `
+        <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--muted)">${i+1}.</span>
+            <div style="background:rgba(79,138,255,.1);border:1px solid rgba(79,138,255,.3);border-radius:8px;padding:6px 14px;text-align:center">
+              <div style="color:var(--accent);font-weight:700;font-size:14px">${r.main_core}${mainEnch}</div>
+              ${mainRec?`<div style="font-size:10px;color:var(--muted)">기본${mainRec.base_level} / 만렙${mainRec.max_level}</div>`:'<div style="font-size:10px;color:var(--muted)">기초재료</div>'}
+            </div>
+            <span style="color:var(--muted);font-size:16px">+</span>
+            <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:6px 14px;text-align:center">
+              <div style="color:var(--gold);font-weight:700;font-size:14px">${r.sub_core}${subEnch}</div>
+              ${subRec?`<div style="font-size:10px;color:var(--muted)">기본${subRec.base_level} / 만렙${subRec.max_level}</div>`:'<div style="font-size:10px;color:var(--muted)">기초재료</div>'}
+            </div>
+            <span style="color:var(--muted);font-size:16px">=</span>
+            <div style="background:${color}18;border:1px solid ${color}44;border-radius:8px;padding:6px 14px;text-align:center">
+              <div style="color:${color};font-weight:700;font-size:14px">${target}</div>
+              <div style="font-size:10px;color:var(--muted)">만렙${sample.max_level}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- 전체 재료 트리 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">🌳 전체 재료 트리 (${sorted.length}종)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+        ${sorted.map(([name,info])=>{
+          const r0 = info.recipes[0];
+          const isBase = !info.recipes.length;
+          const nodeColor = isBase?'var(--muted)':(TYPE_COLORS[r0?.core_type]||'var(--accent)');
+          const recipeInfo = recipes.find(x=>x.result_name===name);
+          const baseLv = recipeInfo?.base_level||'?';
+          const maxLv  = recipeInfo?.max_level||(recipeInfo?.base_level?recipeInfo.base_level+25:'?');
+          const depth  = info.depth;
+          return `
+          <div style="background:var(--surface2);border:1px solid ${nodeColor}44;border-radius:9px;padding:12px;border-left:3px solid ${nodeColor}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-weight:700;color:${nodeColor};font-size:13px">${name}</span>
+              <span style="font-size:10px;background:${nodeColor}22;color:${nodeColor};border-radius:10px;padding:1px 7px">${isBase?'기초재료':'재료'}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">
+              기본 <b style="color:var(--text)">${baseLv}</b> &nbsp;|&nbsp; 만렙 <b style="color:var(--gold)">${maxLv}</b>
+            </div>
+            ${!isBase&&r0?`<div style="font-size:10px;color:var(--muted);margin-top:4px">${r0.main_core}${r0.main_enchant>0?'+'+r0.main_enchant+'강':''} + ${r0.sub_core}${r0.sub_enchant>0?'+'+r0.sub_enchant+'강':''}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  document.getElementById('planner-result').innerHTML = html;
 }
 
 // ── PWA ───────────────────────────────────────────────────────────────────
