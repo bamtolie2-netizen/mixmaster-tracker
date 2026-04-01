@@ -1310,7 +1310,18 @@ const TYPE_COLORS = {
 let recipeTypeFilter = '전체';
 let recipeSearchVal = '';
 
-function renderRecipeTab() {
+async function renderRecipeTab() {
+  // recipes가 비어있으면 로드
+  if(!recipes.length) {
+    document.getElementById('recipe-result').innerHTML = '<div class="loading">⏳ 족보 데이터 불러오는 중...</div>';
+    const {data, error} = await sb.from('core_recipes').select('*').order('base_level',{ascending:true});
+    if(error){ 
+      document.getElementById('recipe-result').innerHTML = '<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">데이터 로드 실패</div></div>';
+      return;
+    }
+    recipes = data || [];
+  }
+
   // 타입 버튼 렌더
   const btnWrap = document.getElementById('recipe-type-btns');
   btnWrap.innerHTML = CORE_TYPES.map(t => `
